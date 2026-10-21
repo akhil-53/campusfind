@@ -1,0 +1,284 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Role {
+  roleId   Int    @id @default(autoincrement()) @map("role_id")
+  roleName String @unique @map("role_name") @db.VarChar(20)
+  users    User[]
+
+  @@map("roles")
+}
+
+model Designation {
+  designationId Int    @id @default(autoincrement()) @map("designation_id")
+  title         String @unique @db.VarChar(50)
+  levelRank     Int    @unique @map("level_rank")
+  users         User[]
+
+  @@map("designations")
+}
+
+model User {
+  userId         Int           @id @default(autoincrement()) @map("user_id")
+  fullName       String        @map("full_name") @db.VarChar(80)
+  email          String        @unique @db.VarChar(120)
+  regNo          String?       @unique @map("reg_no") @db.VarChar(15)
+  googleId       String?       @unique @map("google_id") @db.VarChar(64)
+  passwordHash   String?       @map("password_hash")
+  roleId         Int           @map("role_id")
+  designationId  Int?          @map("designation_id")
+  reportsToId    Int?          @map("reports_to_id")
+  isActive       Boolean       @default(true) @map("is_active")
+  isAvailable    Boolean       @default(true) @map("is_available")
+  lastLoginAt    DateTime?     @map("last_login_at") @db.Timestamptz()
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  role           Role          @relation(fields: [roleId], references: [roleId])
+  designation    Designation?  @relation(fields: [designationId], references: [designationId])
+  reportsTo      User?         @relation("ReportsTo", fields: [reportsToId], references: [userId])
+  subordinates   User[]        @relation("ReportsTo")
+
+  foundItems     FoundItem[]   @relation("LoggedItems")
+  lostReports    LostReport[]  @relation("StudentReports")
+  assignments    Assignment[]  @relation("AssignedFaculty")
+  verificationsScheduled Verification[] @relation("ScheduledBy")
+  verificationsDone      Verification[] @relation("VerifiedBy")
+  roomVisits     RoomVisit[]   @relation("HandledVisits")
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+
+  @@index([roleId, isActive], map: "idx_users_role")
+  @@index([reportsToId], map: "idx_users_reports_to")
+  @@map("users")
+}
+
+model Category {
+  categoryId   Int          @id @default(autoincrement()) @map("category_id")
+  categoryName String       @unique @map("category_name") @db.VarChar(40)
+  isActive     Boolean      @default(true) @map("is_active")
+  foundItems   FoundItem[]
+  lostReports  LostReport[]
+
+  @@map("categories")
+}
+
+model Location {
+  locationId   Int          @id @default(autoincrement()) @map("location_id")
+  block        String       @default("SJT") @db.VarChar(20)
+  roomName     String       @map("room_name") @db.VarChar(30)
+  floorNo      Int?         @map("floor_no")
+  locationType String       @default("CLASSROOM") @map("location_type") @db.VarChar(15)
+  isActive     Boolean      @default(true) @map("is_active")
+  foundItems   FoundItem[]
+  lostReports  LostReport[]
+
+  @@unique([block, roomName], map: "uq_location")
+  @@map("locations")
+}
+
+model FoundItem {
+  foundId            Int          @id @default(autoincrement()) @map("found_id")
+  categoryId         Int          @map("category_id")
+  locationId         Int          @map("location_id")
+  loggedBy           Int          @map("logged_by")
+  description        String       @db.VarChar(200)
+  color              String?      @db.VarChar(30)
+  brand              String?      @db.VarChar(40)
+  shelfCode          String       @unique @map("shelf_code") @db.VarChar(20)
+  status             String       @default("AVAILABLE") @db.VarChar(12)
+  foundAt            DateTime     @map("found_at") @db.Timestamptz()
+  loggedAt           DateTime     @default(now()) @map("logged_at") @db.Timestamptz()
+  unclaimedFlaggedAt DateTime?    @map("unclaimed_flagged_at") @db.Timestamptz()
+  disposedAt         DateTime?    @map("disposed_at") @db.Timestamptz()
+  disposalReason     String?      @map("disposal_reason")
+
+  category           Category     @relation(fields: [categoryId], references: [categoryId])
+  location           Location     @relation(fields: [locationId], references: [locationId])
+  logger             User         @relation("LoggedItems", fields: [loggedBy], references: [userId])
+  images             ItemImage[]
+  matches            Match[]
+  roomVisits         RoomVisit[]
+
+  @@index([categoryId, status, foundAt], map: "idx_found_match")
+  @@map("found_items")
+}
+
+model ItemImage {
+  imageId     Int       @id @default(autoincrement()) @map("image_id")
+  foundId     Int       @map("found_id")
+  storagePath String    @map("storage_path")
+  uploadedAt  DateTime  @default(now()) @map("uploaded_at") @db.Timestamptz()
+
+  foundItem   FoundItem @relation(fields: [foundId], references: [foundId], onDelete: Cascade)
+
+  @@map("item_images")
+}
+
+model LostReport {
+  reportId         Int          @id @default(autoincrement()) @map("report_id")
+  studentId        Int          @map("student_id")
+  categoryId       Int          @map("category_id")
+  locationId       Int          @map("location_id")
+  description      String       @db.VarChar(300)
+  color            String?      @db.VarChar(30)
+  brand            String?      @db.VarChar(40)
+  identifyingMarks String       @map("identifying_marks")
+  lostFrom         DateTime     @map("lost_from") @db.Timestamptz()
+  lostTo           DateTime     @map("lost_to") @db.Timestamptz()
+  status           String       @default("OPEN") @db.VarChar(20)
+  notFoundAt       DateTime?    @map("not_found_at") @db.Timestamptz()
+  closedReason     String?      @map("closed_reason") @db.VarChar(30)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  student          User         @relation("StudentReports", fields: [studentId], references: [userId])
+  category         Category     @relation(fields: [categoryId], references: [categoryId])
+  location         Location     @relation(fields: [locationId], references: [locationId])
+  matches          Match[]
+  assignments      Assignment[]
+  roomVisits       RoomVisit[]
+
+  @@index([studentId, status], map: "idx_reports_student")
+  @@index([status, notFoundAt], map: "idx_reports_status_nf")
+  @@map("lost_reports")
+}
+
+model Match {
+  matchId       Int          @id @default(autoincrement()) @map("match_id")
+  reportId      Int          @map("report_id")
+  foundId       Int          @map("found_id")
+  score         Int
+  source        String       @default("AUTO") @db.VarChar(12)
+  status        String       @default("SUGGESTED") @db.VarChar(12)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+
+  report        LostReport   @relation(fields: [reportId], references: [reportId], onDelete: Cascade)
+  foundItem     FoundItem    @relation(fields: [foundId], references: [foundId], onDelete: Cascade)
+  verifications Verification[]
+
+  @@unique([reportId, foundId], map: "uq_match")
+  @@index([reportId, status], map: "idx_matches_report")
+  @@index([foundId, status], map: "idx_matches_found")
+  @@map("matches")
+}
+
+model Assignment {
+  assignmentId   Int        @id @default(autoincrement()) @map("assignment_id")
+  reportId       Int        @map("report_id")
+  assignedTo     Int        @map("assigned_to")
+  assignmentType String     @default("REVIEW") @map("assignment_type") @db.VarChar(15)
+  level          Int        @default(1)
+  status         String     @default("ACTIVE") @db.VarChar(10)
+  assignedAt     DateTime   @default(now()) @map("assigned_at") @db.Timestamptz()
+  dueAt          DateTime   @map("due_at") @db.Timestamptz()
+  closedAt       DateTime?  @map("closed_at") @db.Timestamptz()
+
+  report         LostReport @relation(fields: [reportId], references: [reportId], onDelete: Cascade)
+  assignee       User       @relation("AssignedFaculty", fields: [assignedTo], references: [userId])
+
+  @@index([assignedTo, status, dueAt], map: "idx_assign_queue")
+  @@map("assignments")
+}
+
+model Verification {
+  verificationId Int            @id @default(autoincrement()) @map("verification_id")
+  matchId        Int            @map("match_id")
+  scheduledBy    Int            @map("scheduled_by")
+  scheduledAt    DateTime       @map("scheduled_at") @db.Timestamptz()
+  venue          String         @db.VarChar(60)
+  marksClaimed   String         @map("marks_claimed")
+  marksObserved  String?        @map("marks_observed")
+  outcome        String         @default("SCHEDULED") @db.VarChar(10)
+  verifiedBy     Int?           @map("verified_by")
+  remarks        String?
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz()
+
+  match          Match          @relation(fields: [matchId], references: [matchId], onDelete: Cascade)
+  scheduler      User           @relation("ScheduledBy", fields: [scheduledBy], references: [userId])
+  verifier       User?          @relation("VerifiedBy", fields: [verifiedBy], references: [userId])
+  handoverLetter HandoverLetter?
+
+  @@map("verifications")
+}
+
+model HandoverLetter {
+  letterId       Int          @id @default(autoincrement()) @map("letter_id")
+  verificationId Int          @unique @map("verification_id")
+  letterNo       String       @unique @map("letter_no") @db.VarChar(20)
+  verifyCode     String       @unique @map("verify_code") @db.VarChar(12)
+  generatedAt    DateTime     @default(now()) @map("generated_at") @db.Timestamptz()
+  handedOverAt   DateTime?    @map("handed_over_at") @db.Timestamptz()
+
+  verification   Verification @relation(fields: [verificationId], references: [verificationId])
+
+  @@map("handover_letters")
+}
+
+model RoomVisit {
+  visitId            Int        @id @default(autoincrement()) @map("visit_id")
+  reportId           Int        @map("report_id")
+  handledBy          Int        @map("handled_by")
+  visitedAt          DateTime   @default(now()) @map("visited_at") @db.Timestamptz()
+  manualSearchResult String     @map("manual_search_result") @db.VarChar(10)
+  foundId            Int?       @map("found_id")
+  cctvChecked        Boolean    @default(false) @map("cctv_checked")
+  cctvOutcome        String?    @map("cctv_outcome") @db.VarChar(16)
+  notes              String?
+
+  report             LostReport @relation(fields: [reportId], references: [reportId], onDelete: Cascade)
+  handler            User       @relation("HandledVisits", fields: [handledBy], references: [userId])
+  foundItem          FoundItem? @relation(fields: [foundId], references: [foundId])
+
+  @@index([reportId], map: "idx_visits_report")
+  @@map("room_visits")
+}
+
+model SystemSetting {
+  settingKey   String   @id @map("setting_key") @db.VarChar(50)
+  settingValue String   @map("setting_value") @db.VarChar(200)
+  description  String?  @db.VarChar(200)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("system_settings")
+}
+
+model Notification {
+  notificationId Int       @id @default(autoincrement()) @map("notification_id")
+  userId         Int       @map("user_id")
+  title          String    @db.VarChar(80)
+  message        String
+  link           String?   @db.VarChar(200)
+  isRead         Boolean   @default(false) @map("is_read")
+  emailedAt      DateTime? @map("emailed_at") @db.Timestamptz()
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user           User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt(sort: Desc)], map: "idx_notif_user")
+  @@map("notifications")
+}
+
+model AuditLog {
+  logId      BigInt    @id @default(autoincrement()) @map("log_id")
+  userId     Int?      @map("user_id")
+  action     String    @db.VarChar(60)
+  entityName String    @map("entity_name") @db.VarChar(30)
+  entityId   Int?      @map("entity_id")
+  details    Json?
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user       User?     @relation(fields: [userId], references: [userId], onDelete: SetNull)
+
+  @@index([entityName, entityId], map: "idx_audit_entity")
+  @@index([createdAt(sort: Desc)], map: "idx_audit_created")
+  @@map("audit_logs")
+}

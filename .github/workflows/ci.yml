@@ -1,0 +1,40 @@
+name: ci
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_SECRET: ci-secret-ci-secret-ci-secret-ci-secret-ci-secret
+      GOOGLE_CLIENT_ID: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Backend Test
+        run: |
+          npm ci
+          npx prisma generate
+          npm test
+        working-directory: backend
+      - name: Frontend Build
+        run: |
+          npm ci --legacy-peer-deps
+          npm run build
+        working-directory: frontend
