@@ -126,11 +126,12 @@ router.get(
         await assertFacultyOnCase(req.user, reportId);
       }
 
+      const includeIdentifyingMarks = req.user.role !== 'STAFF';
       const report = await prisma.lostReport.findUnique({
         where: { reportId },
         select: {
           ...reportForStudentSelect,
-          identifyingMarks: req.user.role !== 'STAFF',
+          ...(includeIdentifyingMarks ? { identifyingMarks: true } : {}),
           student: {
             select: { fullName: true, regNo: true, email: true }
           }
@@ -185,11 +186,17 @@ router.get(
         }
       });
 
+      // Convert BigInt logId to string so it JSON-serializes correctly
+      const timeline = auditRows.map((row) => ({
+        ...row,
+        logId: String(row.logId)
+      }));
+
       return res.json({
         report,
         upcomingVerification,
         handoverLetter: handover,
-        timeline: auditRows
+        timeline
       });
     } catch (err) {
       next(err);

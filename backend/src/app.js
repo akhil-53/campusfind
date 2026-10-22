@@ -3,6 +3,10 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import { env } from './config/env.js';
+
+// Global BigInt JSON serialization patch — prevents "Do not know how to serialize a BigInt"
+// crashes whenever a Prisma BigInt field (e.g. AuditLog.logId) leaks into a response.
+BigInt.prototype.toJSON = function () { return this.toString(); };
 import { generalLimiter, authLimiter } from './middleware/rateLimit.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { HttpError } from './utils/httpError.js';
