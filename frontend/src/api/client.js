@@ -44,9 +44,11 @@ api.interceptors.response.use(
 );
 
 // --- Auth Endpoints ---
-export const loginGoogle = (credential) => api.post('/auth/google', { credential }).then(r => r.data);
-export const completeProfile = (regNo) => api.post('/auth/complete-profile', { regNo }).then(r => r.data);
+export const loginStudent = (email, password, fullName, regNo) => api.post('/auth/student-login', { email, password, fullName, regNo }).then(r => r.data);
+export const registerStudent = (data) => api.post('/auth/student-register', data).then(r => r.data);
+export const loginStaff = (email, password) => api.post('/auth/staff-login', { email, password }).then(r => r.data);
 export const loginAdmin = (email, password) => api.post('/auth/admin-login', { email, password }).then(r => r.data);
+export const completeProfile = (regNo) => api.post('/auth/complete-profile', { regNo }).then(r => r.data);
 export const getMe = () => api.get('/auth/me').then(r => r.data);
 export const logoutUser = () => api.post('/auth/logout').then(r => r.data);
 

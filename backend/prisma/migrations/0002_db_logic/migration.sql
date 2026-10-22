@@ -84,7 +84,7 @@ CREATE OR REPLACE FUNCTION fn_users_hierarchy() RETURNS TRIGGER LANGUAGE plpgsql
 DECLARE v_ok BOOLEAN;
 BEGIN
   IF NEW.reports_to_id IS NULL THEN RETURN NEW; END IF;
-  SELECT (r.role_name = 'FACULTY' AND m.is_active AND dm.level_rank > COALESCE(ds.level_rank, 0))
+  SELECT (r.role_name IN ('FACULTY', 'ADMIN') AND m.is_active AND dm.level_rank > COALESCE(ds.level_rank, 0))
     INTO v_ok
   FROM users m JOIN roles r ON r.role_id = m.role_id
   LEFT JOIN designations dm ON dm.designation_id = m.designation_id

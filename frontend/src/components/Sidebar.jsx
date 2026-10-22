@@ -47,7 +47,9 @@ export function Sidebar({ isOpen, onClose }) {
       case 'ADMIN':
         return [
           { to: '/admin', label: 'Overview', icon: Compass, end: true },
-          { to: '/admin/users', label: 'Users & Staff', icon: Users },
+          { to: '/faculty', label: 'Faculty Queue', icon: Layers },
+          { to: '/faculty/theft', label: 'Theft Tracking', icon: ShieldCheck },
+          { to: '/admin/users', label: 'Faculty & Staff', icon: Users },
           { to: '/admin/hierarchy', label: 'Hierarchy Tree', icon: Network },
           { to: '/admin/reports', label: 'All Reports', icon: Files },
           { to: '/admin/overdue', label: 'Overdue Cases', icon: ClockAlert },

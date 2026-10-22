@@ -1,8 +1,10 @@
 import rateLimit from 'express-rate-limit';
 
+const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: isDev ? 10000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -13,7 +15,7 @@ export const generalLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: isDev ? 5000 : 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -24,7 +26,7 @@ export const authLimiter = rateLimit({
 
 export const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: isDev ? 1000 : 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

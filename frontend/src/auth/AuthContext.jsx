@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getMe, loginGoogle, loginAdmin, completeProfile, logoutUser } from '../api/client';
+import { getMe, loginStudent, registerStudent, loginStaff, loginAdmin, completeProfile, logoutUser } from '../api/client';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -46,8 +46,20 @@ export function AuthProvider({ children }) {
     toast.success(`Welcome back, ${data.user.fullName}!`);
   };
 
-  const loginWithGoogle = async (credential) => {
-    const data = await loginGoogle(credential);
+  const loginStudentUser = async (email, password, fullName, regNo) => {
+    const data = await loginStudent(email, password, fullName, regNo);
+    handleAuthSuccess(data);
+    return data.user;
+  };
+
+  const registerStudentUser = async (formData) => {
+    const data = await registerStudent(formData);
+    handleAuthSuccess(data);
+    return data.user;
+  };
+
+  const loginStaffUser = async (email, password) => {
+    const data = await loginStaff(email, password);
     handleAuthSuccess(data);
     return data.user;
   };
@@ -82,7 +94,9 @@ export function AuthProvider({ children }) {
     user,
     loading,
     isAuthenticated: !!token && !!user,
-    loginWithGoogle,
+    loginStudentUser,
+    registerStudentUser,
+    loginStaffUser,
     loginWithAdminCredentials,
     updateStudentProfile,
     logout

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { body, param, query } from 'express-validator';
+import bcrypt from 'bcrypt';
 import prisma from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { auth } from '../middleware/auth.js';
@@ -222,11 +223,12 @@ router.post(
     body('fullName').isString().trim().notEmpty().withMessage('Full name is required'),
     body('role').isIn(['FACULTY', 'STAFF', 'ADMIN']).withMessage('Role must be FACULTY, STAFF, or ADMIN'),
     body('designationId').optional({ nullable: true }).isInt({ min: 1 }),
-    body('reportsToId').optional({ nullable: true }).isInt({ min: 1 })
+    body('reportsToId').optional({ nullable: true }).isInt({ min: 1 }),
+    body('password').optional().isString()
   ]),
   async (req, res, next) => {
     try {
-      const { email, fullName, role, designationId, reportsToId } = req.body;
+      const { email, fullName, role, designationId, reportsToId, password } = req.body;
 
       if (!email.endsWith(`@${env.STAFF_DOMAIN}`) && !email.endsWith(`@${env.STUDENT_DOMAIN}`)) {
         throw new HttpError(422, `Email must end with institutional domain @${env.STAFF_DOMAIN} or @${env.STUDENT_DOMAIN}`, 'INVALID_DOMAIN');
@@ -242,14 +244,42 @@ router.post(
         throw new HttpError(404, 'Role record not found in system', 'ROLE_NOT_FOUND');
       }
 
+      let parsedDesignationId = designationId ? parseInt(designationId, 10) : null;
+      let parsedReportsToId = reportsToId ? parseInt(reportsToId, 10) : null;
+
+      if (role === 'FACULTY') {
+        if (!parsedDesignationId) {
+          // Default to Level 1 Faculty
+          const defaultDes = await prisma.designation.findFirst({ where: { levelRank: 1 } });
+          parsedDesignationId = defaultDes?.designationId || null;
+        }
+
+        const des = await prisma.designation.findUnique({ where: { designationId: parsedDesignationId } });
+        if (!des || ![1, 2, 3].includes(des.levelRank)) {
+          throw new HttpError(422, 'Faculty must have one of the 3 supported levels: Level 1 (Faculty), Level 2 (HOD), or Level 3 (Dean)', 'INVALID_DESIGNATION_LEVEL');
+        }
+
+        // If level 1 faculty and reportsTo not given, default report to HOD (admin)
+        if (des.levelRank === 1 && !parsedReportsToId) {
+          const hodUser = await prisma.user.findFirst({
+            where: { designation: { title: 'HOD' }, isActive: true }
+          });
+          if (hodUser) parsedReportsToId = hodUser.userId;
+        }
+      }
+
+      const plainPassword = password || (role === 'FACULTY' ? 'faculty123' : 'staff123');
+      const passwordHash = await bcrypt.hash(plainPassword, 10);
+
       const user = await asUser(req.user.id, async (tx) => {
         return tx.user.create({
           data: {
             email,
             fullName,
             roleId: roleRecord.roleId,
-            designationId: designationId ? parseInt(designationId, 10) : null,
-            reportsToId: reportsToId ? parseInt(reportsToId, 10) : null,
+            designationId: parsedDesignationId,
+            reportsToId: parsedReportsToId,
+            passwordHash,
             isActive: true,
             isAvailable: true
           },

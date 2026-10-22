@@ -19,7 +19,8 @@ export function UsersHierarchy() {
     fullName: '',
     role: 'FACULTY',
     designationId: '',
-    reportsToId: ''
+    reportsToId: '',
+    password: ''
   });
 
   const [editingUser, setEditingUser] = useState(null);
@@ -43,7 +44,7 @@ export function UsersHierarchy() {
       toast.success('User account created and pre-provisioned!');
       queryClient.invalidateQueries(['adminUsers']);
       setIsAddOpen(false);
-      setNewUser({ email: '', fullName: '', role: 'FACULTY', designationId: '', reportsToId: '' });
+      setNewUser({ email: '', fullName: '', role: 'FACULTY', designationId: '', reportsToId: '', password: '' });
     }
   });
 
@@ -260,16 +261,16 @@ export function UsersHierarchy() {
 
               {newUser.role === 'FACULTY' && (
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Designation</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Faculty Level (3 Levels)</label>
                   <select
                     value={newUser.designationId}
                     onChange={(e) => setNewUser({ ...newUser, designationId: e.target.value })}
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
                   >
-                    <option value="">Select Designation</option>
+                    <option value="">Select Level</option>
                     {designationsData?.data?.map((d) => (
                       <option key={d.designationId} value={d.designationId}>
-                        {d.title} (Level {d.levelRank})
+                        Level {d.levelRank} — {d.title}
                       </option>
                     ))}
                   </select>
@@ -279,21 +280,35 @@ export function UsersHierarchy() {
 
             {newUser.role === 'FACULTY' && (
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Reports To (Higher Level Faculty)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Reports To (Higher Level Faculty / HOD)</label>
                 <select
                   value={newUser.reportsToId}
                   onChange={(e) => setNewUser({ ...newUser, reportsToId: e.target.value })}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
                 >
-                  <option value="">None (Top Level / Dean)</option>
+                  <option value="">Default (Directly to HOD / Top Level)</option>
                   {facultyUsers.map((u) => (
                     <option key={u.id} value={u.id}>
-                      {u.fullName} ({u.designation || 'Faculty'})
+                      {u.fullName} ({u.designation || 'Faculty'} · Level {u.designationLevel || 1})
                     </option>
                   ))}
                 </select>
               </div>
             )}
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Initial Login Password</label>
+              <input
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder={newUser.role === 'FACULTY' ? 'Default: faculty123' : 'Default: staff123'}
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Leave blank to assign default password (<code className="text-slate-600">{newUser.role === 'FACULTY' ? 'faculty123' : 'staff123'}</code>)
+              </span>
+            </div>
 
             <div className="flex justify-end space-x-2 pt-2">
               <button
