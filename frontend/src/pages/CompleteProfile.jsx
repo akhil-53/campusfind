@@ -54,7 +54,7 @@ export function CompleteProfile() {
               onChange={(e) => setRegNo(e.target.value.toUpperCase())}
               placeholder="e.g. 23BCT0038"
               maxLength={9}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
+              className="w-full h-11 px-4 rounded-xl border border-slate-200 text-sm font-mono tracking-wider uppercase focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition"
             />
             <p className="text-xs text-slate-400 mt-1.5">
               Format: 2 digits, 3 letters, 4 digits (e.g. 23BCT0038)

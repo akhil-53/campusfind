@@ -147,7 +147,7 @@ export function NewFoundItem() {
             </label>
             <select
               {...register('categoryId')}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
             >
               <option value="">Select Category</option>
               {metaData?.categories?.map((c) => (
@@ -167,7 +167,7 @@ export function NewFoundItem() {
             </label>
             <select
               {...register('locationId')}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
             >
               <option value="">Select Room</option>
               {metaData?.locations?.map((l) => (
@@ -192,7 +192,7 @@ export function NewFoundItem() {
               type="text"
               {...register('shelfCode')}
               placeholder="e.g. SH-A01"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono uppercase focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             {errors.shelfCode && (
               <p className="text-xs text-rose-500 mt-1">{errors.shelfCode.message}</p>
@@ -206,7 +206,7 @@ export function NewFoundItem() {
             <input
               type="datetime-local"
               {...register('foundAt')}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
             {errors.foundAt && (
               <p className="text-xs text-rose-500 mt-1">{errors.foundAt.message}</p>
@@ -223,7 +223,7 @@ export function NewFoundItem() {
             rows={2}
             {...register('description')}
             placeholder="e.g. Blue plastic umbrella with curved handle..."
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           {errors.description && (
             <p className="text-xs text-rose-500 mt-1">{errors.description.message}</p>
@@ -240,7 +240,7 @@ export function NewFoundItem() {
               type="text"
               {...register('color')}
               placeholder="e.g. Black / Blue"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -252,7 +252,7 @@ export function NewFoundItem() {
               type="text"
               {...register('brand')}
               placeholder="e.g. Milton / Casio"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
         </div>
@@ -276,7 +276,7 @@ export function NewFoundItem() {
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50"
+            className="inline-flex items-center h-11 px-6 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50"
           >
             {submitting ? 'Registering Item...' : 'Save & Print Shelf Tag'}
           </button>

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getMeta, createReport } from '../../api/client';
-import { FilePlus, ShieldAlert, Info, ArrowLeft } from 'lucide-react';
+import { FilePlus, ShieldAlert, Clock, Tag, Palette, ArrowLeft, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const reportSchema = z.object({
@@ -20,7 +20,6 @@ const reportSchema = z.object({
   lostToDate: z.string().min(1, 'Lost to date is required'),
   lostToTime: z.string().min(1, 'Lost to time is required')
 }).superRefine((data, ctx) => {
-  // Build local datetimes from separate date and time fields.
   const from = new Date(`${data.lostFromDate}T${data.lostFromTime}`);
   const to = new Date(`${data.lostToDate}T${data.lostToTime}`);
 
@@ -28,47 +27,67 @@ const reportSchema = z.object({
     !data.lostFromDate || !data.lostFromTime ||
     !data.lostToDate || !data.lostToTime ||
     Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())
-  ) {
-    return;
-  }
+  ) return;
 
   if (to < from) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Lost To cannot be earlier than Lost From',
-      path: ['lostToTime']
-    });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Lost To cannot be earlier than Lost From', path: ['lostToTime'] });
     return;
   }
-
   const diffHours = (to.getTime() - from.getTime()) / (1000 * 60 * 60);
   if (diffHours > 24) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Lost time range cannot exceed 24 hours',
-      path: ['lostToTime']
-    });
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Lost time range cannot exceed 24 hours', path: ['lostToTime'] });
   }
-
-
 });
+
+/** Shared label + hint + error wrapper */
+function Field({ label, required, hint, error, children }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-sm font-semibold text-slate-700">
+        {label}{required && <span className="text-rose-500 ml-0.5">*</span>}
+      </label>
+      {children}
+      {hint && !error && <p className="text-xs text-slate-400">{hint}</p>}
+      {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
+    </div>
+  );
+}
+
+const inputCls =
+  'w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 transition hover:border-slate-300';
+
+const selectCls =
+  'w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 focus:outline-none focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 transition hover:border-slate-300 cursor-pointer';
+
+/** Card section with icon header */
+function Section({ icon: Icon, title, subtitle, accent = 'brand', children }) {
+  const accentMap = {
+    brand: 'bg-brand-50 text-brand-600',
+    slate: 'bg-slate-100 text-slate-600',
+  };
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${accentMap[accent]}`}>
+          <Icon className="w-4 h-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-slate-800">{title}</h2>
+          {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="px-6 py-6 space-y-5">{children}</div>
+    </div>
+  );
+}
 
 export function NewReport() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: metaData } = useQuery({
-    queryKey: ['meta'],
-    queryFn: getMeta
-  });
+  const { data: metaData } = useQuery({ queryKey: ['meta'], queryFn: getMeta });
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors }
-  } = useForm({
-    resolver: zodResolver(reportSchema)
-  });
+  const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(reportSchema) });
 
   const onSubmit = async (values) => {
     setSubmitting(true);
@@ -76,23 +95,21 @@ export function NewReport() {
       const { lostFromDate, lostFromTime, lostToDate, lostToTime, ...otherValues } = values;
       const lostFrom = new Date(`${lostFromDate}T${lostFromTime}`);
       const lostTo = new Date(`${lostToDate}T${lostToTime}`);
-
-      const res = await createReport({
-        ...otherValues,
-        lostFrom: lostFrom.toISOString(),
-        lostTo: lostTo.toISOString()
-      });
+      const res = await createReport({ ...otherValues, lostFrom: lostFrom.toISOString(), lostTo: lostTo.toISOString() });
       toast.success('Lost report submitted! Our review team has been notified.');
       navigate(`/student/reports/${res.report.reportId}`);
     } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to submit. Please try again.');
       console.error(e);
     }
     setSubmitting(false);
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center space-x-3">
+    <div className="max-w-2xl mx-auto space-y-8">
+
+      {/* Page header */}
+      <div className="flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
           className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
@@ -100,203 +117,131 @@ export function NewReport() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">File a Lost Item Report</h1>
-          <p className="text-xs text-slate-400">
-            Provide accurate details so our system can calculate match likelihood.
+          <h1 className="text-2xl font-bold text-slate-900">File a Lost Item Report</h1>
+          <p className="text-sm text-slate-400 mt-0.5">
+            Accurate details improve match likelihood. Fields marked <span className="text-rose-500">*</span> are required.
           </p>
         </div>
       </div>
 
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-6"
-      >
-        {/* Category & Location */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Item Category *
-            </label>
-            <select
-              {...register('categoryId')}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="">Select Category</option>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+
+        {/* ── Section 1: Item Details ── */}
+        <Section icon={Tag} title="Item Details" subtitle="What did you lose and where?">
+          <Field label="Item Category" required error={errors.categoryId?.message}>
+            <select {...register('categoryId')} className={selectCls}>
+              <option value="">Select a category...</option>
               {metaData?.categories?.map((c) => (
-                <option key={c.categoryId} value={c.categoryId}>
-                  {c.categoryName}
-                </option>
+                <option key={c.categoryId} value={c.categoryId}>{c.categoryName}</option>
               ))}
             </select>
-            {errors.categoryId && (
-              <p className="text-xs text-rose-500 mt-1">{errors.categoryId.message}</p>
-            )}
-          </div>
+          </Field>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Room / Location *
-            </label>
-            <select
-              {...register('locationId')}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="">Select Room</option>
+          <Field label="Room / Location" required error={errors.locationId?.message}>
+            <select {...register('locationId')} className={selectCls}>
+              <option value="">Select the room where you lost it...</option>
               {metaData?.locations?.map((l) => (
                 <option key={l.locationId} value={l.locationId}>
-                  {l.block} - {l.roomName} ({l.locationType})
+                  {l.block} — {l.roomName} ({l.locationType})
                 </option>
               ))}
             </select>
-            {errors.locationId && (
-              <p className="text-xs text-rose-500 mt-1">{errors.locationId.message}</p>
-            )}
-          </div>
-        </div>
+          </Field>
+        </Section>
 
-        {/* Lost date and time: separate inputs prevent browser datetime-local format issues */}
-        <div className="space-y-4">
+        {/* ── Section 2: Time Window ── */}
+        <Section icon={Clock} title="When Did You Lose It?" subtitle="Narrow the window as much as possible — maximum 24 hours." accent="slate">
           <div>
-            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Lost From (Estimated) *
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  {...register('lostFromDate')}
-                  className="w-full min-w-0 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-                {errors.lostFromDate && (
-                  <p className="text-xs text-rose-500 mt-1">{errors.lostFromDate.message}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Time
-                </label>
-                <input
-                  type="time"
-                  {...register('lostFromTime')}
-                  className="w-full min-w-0 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-                {errors.lostFromTime && (
-                  <p className="text-xs text-rose-500 mt-1">{errors.lostFromTime.message}</p>
-                )}
-              </div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+              Lost from <span className="text-rose-500">*</span>
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Date" error={errors.lostFromDate?.message}>
+                <input type="date" {...register('lostFromDate')} className={inputCls} />
+              </Field>
+              <Field label="Time" error={errors.lostFromTime?.message}>
+                <input type="time" {...register('lostFromTime')} className={inputCls} />
+              </Field>
             </div>
           </div>
 
           <div>
-            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Lost To (Maximum 24-hour Window) *
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  {...register('lostToDate')}
-                  className="w-full min-w-0 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-                {errors.lostToDate && (
-                  <p className="text-xs text-rose-500 mt-1">{errors.lostToDate.message}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                  Time
-                </label>
-                <input
-                  type="time"
-                  {...register('lostToTime')}
-                  className="w-full min-w-0 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-                {errors.lostToTime && (
-                  <p className="text-xs text-rose-500 mt-1">{errors.lostToTime.message}</p>
-                )}
-              </div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+              Lost to <span className="text-rose-500">*</span>
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Date" error={errors.lostToDate?.message}>
+                <input type="date" {...register('lostToDate')} className={inputCls} />
+              </Field>
+              <Field label="Time" error={errors.lostToTime?.message}>
+                <input type="time" {...register('lostToTime')} className={inputCls} />
+              </Field>
             </div>
           </div>
-          <p className="text-xs text-slate-400">
-            Select the date and time separately. The lost time range must be no longer than 24 hours and cannot end in the future.
-          </p>
-        </div>
 
-        {/* General Description */}
-        <div>
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-            General Description (10–300 chars) *
-          </label>
-          <textarea
-            rows={3}
-            {...register('description')}
-            placeholder="e.g. Black stainless steel Milton water bottle with a silver cap..."
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          />
-          {errors.description && (
-            <p className="text-xs text-rose-500 mt-1">{errors.description.message}</p>
-          )}
-        </div>
-
-        {/* Color & Brand */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Color
-            </label>
-            <input
-              type="text"
-              {...register('color')}
-              placeholder="e.g. Matte Black / Silver"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
+          <div className="flex items-start gap-2 bg-slate-50 rounded-xl px-4 py-3 border border-slate-200">
+            <Info className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-slate-500">The range must not exceed 24 hours and cannot end in the future.</p>
           </div>
+        </Section>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Brand / Manufacturer
-            </label>
-            <input
-              type="text"
-              {...register('brand')}
-              placeholder="e.g. Milton / Apple / Dell"
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+        {/* ── Section 3: Description & Appearance ── */}
+        <Section icon={Palette} title="Description & Appearance" subtitle="Help our system find a match in the found items inventory.">
+          <Field
+            label="General Description"
+            required
+            hint="10–300 characters. Include model, colour, and condition."
+            error={errors.description?.message}
+          >
+            <textarea
+              rows={3}
+              {...register('description')}
+              placeholder="e.g. Black stainless steel Milton water bottle with a silver screw cap, slight dents on the bottom..."
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-brand-500/20 focus:border-brand-500 transition hover:border-slate-300 resize-none"
             />
-          </div>
-        </div>
+          </Field>
 
-        {/* Identifying Marks (CONFIDENTIAL) */}
-        <div className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200/80 space-y-2">
-          <div className="flex items-start space-x-2">
-            <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Colour" hint="e.g. Matte Black / Silver" error={errors.color?.message}>
+              <input type="text" {...register('color')} placeholder="Matte Black / Silver" className={inputCls} />
+            </Field>
+            <Field label="Brand / Make" hint="e.g. Milton, Apple, Dell" error={errors.brand?.message}>
+              <input type="text" {...register('brand')} placeholder="Milton / Apple / Dell" className={inputCls} />
+            </Field>
+          </div>
+        </Section>
+
+        {/* ── Section 4: Confidential Proof ── */}
+        <div className="bg-amber-50 rounded-2xl border border-amber-200 overflow-hidden">
+          <div className="flex items-start gap-3 px-6 py-4 border-b border-amber-200/70">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
             <div>
-              <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider">
-                Identifying Marks & Confidential Proof *
-              </label>
-              <p className="text-xs text-amber-700">
-                Only the verifying faculty will see this during your physical verification appointment. Staff and other students will never see this.
+              <h2 className="text-sm font-bold text-amber-900">
+                Identifying Marks & Confidential Proof <span className="text-rose-500">*</span>
+              </h2>
+              <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                <strong>Only the verifying faculty</strong> will see this during your physical verification.
+                Staff and other students will never have access to this field.
               </p>
             </div>
           </div>
-
-          <textarea
-            rows={3}
-            {...register('identifyingMarks')}
-            placeholder="Describe specific scratches, stickers, serial numbers, wallpapers, engraving, or specific contents..."
-            className="w-full px-4 py-2.5 rounded-xl border border-amber-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-          />
-          {errors.identifyingMarks && (
-            <p className="text-xs text-rose-500 mt-1">{errors.identifyingMarks.message}</p>
-          )}
+          <div className="px-6 py-5">
+            <textarea
+              rows={4}
+              {...register('identifyingMarks')}
+              placeholder="Describe specific scratches, stickers, serial numbers, lock screen wallpaper, engraving, or unique contents inside..."
+              className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-4 focus:ring-amber-400/25 focus:border-amber-400 transition hover:border-amber-300 resize-none"
+            />
+            {errors.identifyingMarks && (
+              <p className="text-xs text-rose-500 font-medium mt-1.5">{errors.identifyingMarks.message}</p>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+        {/* ── Actions ── */}
+        <div className="flex items-center justify-between pt-2">
           <button
             type="button"
             onClick={() => navigate(-1)}
@@ -307,11 +252,13 @@ export function NewReport() {
           <button
             type="submit"
             disabled={submitting}
-            className="inline-flex items-center px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-600/25 transition disabled:opacity-50 focus:outline-none focus:ring-4 focus:ring-brand-500/30"
           >
-            {submitting ? 'Submitting...' : 'Submit Lost Report'}
+            <FilePlus className="w-4 h-4" />
+            {submitting ? 'Submitting…' : 'Submit Lost Report'}
           </button>
         </div>
+
       </form>
     </div>
   );

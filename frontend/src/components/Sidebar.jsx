@@ -34,10 +34,10 @@ export function Sidebar({ isOpen, onClose }) {
       case 'STAFF':
         return [
           { to: '/staff', label: 'Dashboard', icon: Compass, end: true },
-          { to: '/staff/items/new', label: 'Log Found Item', icon: PackagePlus },
-          { to: '/staff/items', label: 'Found Inventory', icon: Boxes },
+          { to: '/staff/items/new', label: 'Log Found Item', icon: PackagePlus, end: true },
+          { to: '/staff/items', label: 'Found Inventory', icon: Boxes, end: true },
           { to: '/staff/not-found', label: 'Room Search Cases', icon: HelpCircle },
-          { to: '/staff/visits/new', label: 'Record Room Visit', icon: ClipboardList }
+          { to: '/staff/visits/new', label: 'Record Room Visit', icon: ClipboardList, end: true }
         ];
       case 'FACULTY':
         return [
@@ -47,7 +47,7 @@ export function Sidebar({ isOpen, onClose }) {
       case 'ADMIN':
         return [
           { to: '/admin', label: 'Overview', icon: Compass, end: true },
-          { to: '/faculty', label: 'Faculty Queue', icon: Layers },
+          { to: '/faculty', label: 'Faculty Queue', icon: Layers, end: true },
           { to: '/faculty/theft', label: 'Theft Tracking', icon: ShieldCheck },
           { to: '/admin/users', label: 'Faculty & Staff', icon: Users },
           { to: '/admin/hierarchy', label: 'Hierarchy Tree', icon: Network },
