@@ -12,8 +12,10 @@ export function validate(validations) {
       return next();
     }
 
+    const firstMsg = errors.array()[0]?.msg || 'Validation failed';
     return res.status(422).json({
       error: 'VALIDATION',
+      message: firstMsg,
       details: errors.array().map(err => ({
         field: err.path || err.param,
         message: err.msg

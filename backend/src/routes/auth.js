@@ -126,7 +126,7 @@ router.post(
   '/student-register',
   validate([
     body('email').isEmail().normalizeEmail().withMessage('Valid VIT student email required'),
-    body('password').isString().isLength({ min: 4 }).withMessage('Password must be at least 4 characters'),
+    body('password').isString().notEmpty().withMessage('Password is required'),
     body('fullName').isString().trim().notEmpty().withMessage('Full name is required'),
     body('regNo').isString().trim().notEmpty().withMessage('Registration number is required (e.g. 23BCT0038)')
   ]),
@@ -138,30 +138,48 @@ router.post(
         throw new HttpError(403, `Registration requires an official @${env.STUDENT_DOMAIN} email`, 'DOMAIN_FORBIDDEN');
       }
 
-      const existing = await prisma.user.findUnique({ where: { email } });
-      if (existing) {
-        throw new HttpError(409, 'An account with this email already exists. Please sign in.', 'ACCOUNT_EXISTS');
-      }
-
       const studentRole = await prisma.role.findUnique({ where: { roleName: 'STUDENT' } });
       const passwordHash = await bcrypt.hash(password, 10);
+      const studentRegNo = regNo.trim().toUpperCase();
 
-      const user = await prisma.user.create({
-        data: {
-          fullName: fullName.trim(),
-          email,
-          regNo: regNo.trim().toUpperCase(),
-          passwordHash,
-          roleId: studentRole.roleId,
-          isActive: true,
-          isAvailable: true,
-          lastLoginAt: new Date()
-        },
+      const existing = await prisma.user.findUnique({
+        where: { email },
         include: { role: true, designation: true }
       });
 
+      let user;
+      if (existing) {
+        // If user already exists, update their profile and password, then log them in
+        user = await prisma.user.update({
+          where: { userId: existing.userId },
+          data: {
+            fullName: fullName.trim(),
+            regNo: studentRegNo,
+            passwordHash,
+            roleId: studentRole.roleId,
+            isActive: true,
+            lastLoginAt: new Date()
+          },
+          include: { role: true, designation: true }
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            fullName: fullName.trim(),
+            email,
+            regNo: studentRegNo,
+            passwordHash,
+            roleId: studentRole.roleId,
+            isActive: true,
+            isAvailable: true,
+            lastLoginAt: new Date()
+          },
+          include: { role: true, designation: true }
+        });
+      }
+
       const token = generateJwt(user);
-      return res.status(201).json({
+      return res.status(200).json({
         token,
         user: sanitizeUser(user)
       });
