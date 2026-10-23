@@ -60,6 +60,15 @@ app.use('/api', generalLimiter);
 // 6. Strict rate limiter on /api/auth
 app.use('/api/auth', authLimiter);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'CampusFind API',
+    status: 'online',
+    health: '/api/health'
+  });
+});
+
 // 7. Mount Routers under /api
 app.use('/api', publicRoutes);
 app.use('/api/auth', authRoutes);
