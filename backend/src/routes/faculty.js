@@ -193,7 +193,10 @@ router.get(
               shelfCode: m.foundItem.shelfCode,
               foundAt: m.foundItem.foundAt,
               status: m.foundItem.status,
-              roomName: m.foundItem.location.roomName,
+              locationText: m.foundItem.locationText || null,
+              roomName: m.foundItem.location
+                ? `${m.foundItem.location.block} - ${m.foundItem.location.roomName}`
+                : (m.foundItem.locationText || 'Not specified'),
               images: signedImages
             }
           };
