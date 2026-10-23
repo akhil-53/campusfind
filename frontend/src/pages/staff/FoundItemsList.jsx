@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../auth/AuthContext';
 import { getFoundItems, getMeta, disposeItem, markHandedOver, updateFoundItem } from '../../api/client';
 import { DataTable } from '../../components/DataTable';
 import { StatusBadge } from '../../components/StatusBadge';
@@ -15,12 +16,14 @@ import {
   CheckCircle,
   Edit2,
   Boxes,
+  Files,
   Image as ImageIcon
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
 
 export function FoundItemsList() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -105,7 +108,12 @@ export function FoundItemsList() {
       accessor: 'description',
       render: (item) => (
         <div>
-          <span className="font-bold text-slate-800 text-xs block">{item.category?.categoryName}</span>
+          <span className="font-bold text-slate-800 text-xs block">
+            {item.category?.categoryName}
+            {item.categoryCustom && (
+              <span className="text-brand-600 font-semibold ml-1">({item.categoryCustom})</span>
+            )}
+          </span>
           <p className="text-xs text-slate-600 line-clamp-1 max-w-xs">{item.description}</p>
           {(item.brand || item.color) && (
             <span className="text-[10px] text-slate-400">
@@ -120,7 +128,9 @@ export function FoundItemsList() {
       accessor: 'foundAt',
       render: (item) => (
         <div>
-          <span className="text-xs font-medium text-slate-700 block">{item.location?.roomName}</span>
+          <span className="text-xs font-medium text-slate-700 block">
+            {item.location ? `${item.location.block} - ${item.location.roomName}` : (item.locationText || 'Not specified')}
+          </span>
           <span className="text-[10px] text-slate-400">{dayjs(item.foundAt).format('DD MMM YYYY, hh:mm A')}</span>
         </div>
       )
@@ -178,12 +188,28 @@ export function FoundItemsList() {
           </p>
         </div>
 
-        <Link
-          to="/staff/items/new"
-          className="inline-flex items-center px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-sm transition"
-        >
-          <PackagePlus className="w-4 h-4 mr-1.5" /> Log New Found Item
-        </Link>
+        <div className="flex items-center gap-3">
+          {user?.role === 'ADMIN' && (
+            <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
+              <Link
+                to="/admin/reports"
+                className="inline-flex items-center px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 font-medium text-xs transition"
+              >
+                <Files className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Lost Reports
+              </Link>
+              <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-white text-brand-700 font-bold text-xs shadow-sm">
+                <Boxes className="w-3.5 h-3.5 mr-1.5" /> Found Inventory
+              </span>
+            </div>
+          )}
+
+          <Link
+            to="/staff/items/new"
+            className="inline-flex items-center px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl shadow-sm transition"
+          >
+            <PackagePlus className="w-4 h-4 mr-1.5" /> Log New Found Item
+          </Link>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

@@ -58,7 +58,10 @@ export const getHealth = () => api.get('/health').then(r => r.data);
 export const verifyLetterCode = (code) => api.get(`/public/verify/${code}`).then(r => r.data);
 
 // --- Student Reports ---
-export const createReport = (data) => api.post('/reports', data).then(r => r.data);
+export const createReport = (data) =>
+  api.post('/reports', data, {
+    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+  }).then(r => r.data);
 export const getMyReports = (params) => api.get('/reports/mine', { params }).then(r => r.data);
 export const getReportById = (id) => api.get(`/reports/${id}`).then(r => r.data);
 export const withdrawReport = (id) => api.post(`/reports/${id}/withdraw`).then(r => r.data);

@@ -204,6 +204,14 @@ export function App() {
             }
           />
           <Route
+            path="/admin/items"
+            element={
+              <ProtectedRoute roles={['ADMIN']}>
+                <FoundItemsList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/overdue"
             element={
               <ProtectedRoute roles={['ADMIN']}>

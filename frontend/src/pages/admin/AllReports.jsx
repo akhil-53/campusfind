@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAllReportsAdmin, reassignReport, closeReportAdmin, getAdminUsers } from '../../api/client';
 import { DataTable } from '../../components/DataTable';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Modal } from '../../components/Modal';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { Search, UserCheck, XCircle, ShieldCheck } from 'lucide-react';
+import { Search, UserCheck, XCircle, ShieldCheck, Boxes, Files } from 'lucide-react';
 import dayjs from 'dayjs';
 import toast from 'react-hot-toast';
 
@@ -143,6 +144,19 @@ export function AllReports() {
           <p className="text-xs text-slate-400">
             Administrative overview of all submitted cases with confidential mark audit and reassignment overrides.
           </p>
+        </div>
+
+        {/* Tab switch between Lost Reports and Found Inventory */}
+        <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200">
+          <span className="inline-flex items-center px-3.5 py-1.5 rounded-xl bg-white text-brand-700 font-bold text-xs shadow-sm">
+            <Files className="w-3.5 h-3.5 mr-1.5" /> Lost Reports
+          </span>
+          <Link
+            to="/admin/items"
+            className="inline-flex items-center px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 font-medium text-xs transition"
+          >
+            <Boxes className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Found Inventory
+          </Link>
         </div>
       </div>
 

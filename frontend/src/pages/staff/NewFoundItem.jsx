@@ -6,12 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getMeta, logFoundItem } from '../../api/client';
 import { ImageUploader } from '../../components/ImageUploader';
-import { PackagePlus, ArrowLeft, CheckCircle2, Tag, Copy } from 'lucide-react';
+import { PackagePlus, ArrowLeft, CheckCircle2, Tag, MapPin, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const foundItemSchema = z.object({
   categoryId: z.coerce.number().min(1, 'Category is required'),
-  locationId: z.coerce.number().min(1, 'Found room location is required'),
+  categoryCustom: z.string().max(80).optional().or(z.literal('')),
+  locationText: z.string().min(2, 'Please enter a room number or location').max(200, 'Max 200 characters'),
   description: z.string().min(3, 'Minimum 3 characters').max(200, 'Max 200 characters'),
   color: z.string().max(30).optional().or(z.literal('')),
   brand: z.string().max(40).optional().or(z.literal('')),
@@ -30,6 +31,8 @@ export function NewFoundItem() {
   const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [createdItem, setCreatedItem] = useState(null);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
 
   const { data: metaData } = useQuery({
     queryKey: ['meta'],
@@ -39,6 +42,7 @@ export function NewFoundItem() {
   const {
     register,
     handleSubmit,
+    watch,
     setValue,
     formState: { errors }
   } = useForm({
@@ -49,15 +53,56 @@ export function NewFoundItem() {
     }
   });
 
+  const selectedCategoryId = watch('categoryId');
+  const selectedCategory = metaData?.categories?.find(
+    (c) => String(c.categoryId) === String(selectedCategoryId)
+  );
+  const isOtherCategory = selectedCategory?.categoryName?.toLowerCase() === 'other';
+
+  // Smart suggestions from known locations
+  const filteredLocations = (metaData?.locations || []).filter((l) => {
+    const q = locationQuery.toLowerCase();
+    return (
+      l.roomName?.toLowerCase().includes(q) ||
+      l.block?.toLowerCase().includes(q) ||
+      l.locationType?.toLowerCase().includes(q)
+    );
+  }).slice(0, 6);
+
+  const handleLocationSelect = (loc) => {
+    const label = `${loc.block} — ${loc.roomName}`;
+    setValue('locationText', label, { shouldValidate: true });
+    setLocationQuery(label);
+    setShowLocationSuggestions(false);
+  };
+
   const onSubmit = async (values) => {
+    if (isOtherCategory && (!values.categoryCustom || !values.categoryCustom.trim())) {
+      toast.error('Please specify what category the item is.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('categoryId', values.categoryId);
-      formData.append('locationId', values.locationId);
-      formData.append('description', values.description);
-      if (values.color) formData.append('color', values.color);
-      if (values.brand) formData.append('brand', values.brand);
+      if (values.categoryCustom?.trim()) {
+        formData.append('categoryCustom', values.categoryCustom.trim());
+      }
+
+      // Check if locationText matches a known room
+      const matched = (metaData?.locations || []).find((l) => {
+        const text = values.locationText.toLowerCase();
+        return text.includes(l.roomName.toLowerCase()) || `${l.block} — ${l.roomName}`.toLowerCase() === text;
+      });
+      if (matched) {
+        formData.append('locationId', matched.locationId);
+      }
+      formData.append('locationText', values.locationText.trim());
+
+      formData.append('description', values.description.trim());
+      if (values.color) formData.append('color', values.color.trim());
+      if (values.brand) formData.append('brand', values.brand.trim());
       formData.append('shelfCode', values.shelfCode.trim().toUpperCase());
       formData.append('foundAt', new Date(values.foundAt).toISOString());
 
@@ -70,6 +115,7 @@ export function NewFoundItem() {
       toast.success('Found item logged successfully!');
     } catch (e) {
       console.error(e);
+      toast.error(e?.response?.data?.message || 'Failed to log found item');
     }
     setSubmitting(false);
   };
@@ -101,6 +147,7 @@ export function NewFoundItem() {
               onClick={() => {
                 setCreatedItem(null);
                 setImages([]);
+                setLocationQuery('');
               }}
               className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-sm transition"
             >
@@ -139,47 +186,109 @@ export function NewFoundItem() {
         onSubmit={handleSubmit(onSubmit)}
         className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-sm space-y-6"
       >
-        {/* Category & Location */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Category *
-            </label>
-            <select
-              {...register('categoryId')}
-              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="">Select Category</option>
-              {metaData?.categories?.map((c) => (
-                <option key={c.categoryId} value={c.categoryId}>
-                  {c.categoryName}
-                </option>
-              ))}
-            </select>
-            {errors.categoryId && (
-              <p className="text-xs text-rose-500 mt-1">{errors.categoryId.message}</p>
-            )}
+        {/* Category & Custom Category */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Category *
+              </label>
+              <select
+                {...register('categoryId')}
+                className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+              >
+                <option value="">Select Category</option>
+                {metaData?.categories?.map((c) => (
+                  <option key={c.categoryId} value={c.categoryId}>
+                    {c.categoryName}
+                  </option>
+                ))}
+              </select>
+              {errors.categoryId && (
+                <p className="text-xs text-rose-500 mt-1">{errors.categoryId.message}</p>
+              )}
+            </div>
+
+            {/* Room Found In with manual entry + suggestions */}
+            <div className="relative">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Room Found In / Location *
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="e.g. SJT 101, SJT 712, 4th floor corridor"
+                  autoComplete="off"
+                  {...register('locationText', {
+                    onChange: (e) => {
+                      setLocationQuery(e.target.value);
+                      setShowLocationSuggestions(true);
+                    }
+                  })}
+                  onFocus={() => setShowLocationSuggestions(true)}
+                  className="w-full h-11 pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowLocationSuggestions((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+
+              {errors.locationText && (
+                <p className="text-xs text-rose-500 mt-1">{errors.locationText.message}</p>
+              )}
+
+              {/* Suggestions dropdown */}
+              {showLocationSuggestions && filteredLocations.length > 0 && (
+                <div className="absolute z-20 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                  <p className="text-xs text-slate-400 font-medium px-3 py-2 border-b border-slate-100 bg-slate-50">
+                    Known rooms — click to fill, or type any custom room/area
+                  </p>
+                  {filteredLocations.map((l) => (
+                    <button
+                      key={l.locationId}
+                      type="button"
+                      onMouseDown={() => handleLocationSelect(l)}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 transition flex items-center gap-2"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span>
+                        <span className="font-semibold">{l.block} — {l.roomName}</span>
+                        <span className="text-slate-400 text-xs ml-1.5">({l.locationType})</span>
+                      </span>
+                    </button>
+                  ))}
+                  <div className="px-4 py-2 bg-slate-50 border-t border-slate-100">
+                    <p className="text-xs text-slate-500">
+                      💡 You can enter any custom room number or area.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Room Found In *
-            </label>
-            <select
-              {...register('locationId')}
-              className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-            >
-              <option value="">Select Room</option>
-              {metaData?.locations?.map((l) => (
-                <option key={l.locationId} value={l.locationId}>
-                  {l.block} - {l.roomName}
-                </option>
-              ))}
-            </select>
-            {errors.locationId && (
-              <p className="text-xs text-rose-500 mt-1">{errors.locationId.message}</p>
-            )}
-          </div>
+          {/* Conditional Custom Category Input when "Other" is chosen */}
+          {isOtherCategory && (
+            <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-2xl animate-in fade-in duration-200">
+              <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-1.5">
+                Specify Custom Item Category / Name *
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Silver Bracelet, Scientific Calculator, Lab Coat..."
+                {...register('categoryCustom')}
+                className="w-full h-11 px-4 py-2.5 rounded-xl border border-amber-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <p className="text-xs text-amber-700 mt-1">
+                Since you selected "Other", please specify the exact type of item so claimants can easily identify it.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Shelf Code & Found At */}
@@ -223,7 +332,7 @@ export function NewFoundItem() {
             rows={2}
             {...register('description')}
             placeholder="e.g. Blue plastic umbrella with curved handle..."
-            className="w-full h-11 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="w-full h-16 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
           />
           {errors.description && (
             <p className="text-xs text-rose-500 mt-1">{errors.description.message}</p>

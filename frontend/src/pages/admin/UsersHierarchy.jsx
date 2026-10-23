@@ -3,7 +3,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAdminUsers, createAdminUser, updateAdminUser, getDesignations } from '../../api/client';
 import { DataTable } from '../../components/DataTable';
 import { Modal } from '../../components/Modal';
-import { UserPlus, Search, Edit2, Shield, UserX, UserCheck, Network } from 'lucide-react';
+import {
+  UserPlus,
+  Search,
+  Edit2,
+  Shield,
+  UserX,
+  UserCheck,
+  Network,
+  Mail,
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  Sparkles,
+  CheckCircle2,
+  Award,
+  Briefcase,
+  ShieldCheck,
+  Info
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function UsersHierarchy() {
@@ -14,6 +33,7 @@ export function UsersHierarchy() {
 
   // Modals state
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [newUser, setNewUser] = useState({
     email: '',
     fullName: '',
@@ -209,7 +229,12 @@ export function UsersHierarchy() {
 
       {/* Add User Modal */}
       {isAddOpen && (
-        <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title="Pre-Provision Institutional User">
+        <Modal
+          isOpen={isAddOpen}
+          onClose={() => setIsAddOpen(false)}
+          title="Pre-Provision Institutional User"
+          maxWidth="max-w-2xl"
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -219,111 +244,252 @@ export function UsersHierarchy() {
                 reportsToId: newUser.reportsToId ? parseInt(newUser.reportsToId, 10) : undefined
               });
             }}
-            className="space-y-4"
+            className="space-y-6"
           >
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
-              <input
-                type="text"
-                required
-                value={newUser.fullName}
-                onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
-                placeholder="Dr. S. Ramaswamy"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">VIT Institutional Email (@vit.ac.in) *</label>
-              <input
-                type="email"
-                required
-                value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                placeholder="ramaswamy@vit.ac.in"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Role *</label>
-                <select
-                  value={newUser.role}
-                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-                >
-                  <option value="FACULTY">FACULTY</option>
-                  <option value="STAFF">STAFF</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
-              </div>
-
-              {newUser.role === 'FACULTY' && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Faculty Level (3 Levels)</label>
-                  <select
-                    value={newUser.designationId}
-                    onChange={(e) => setNewUser({ ...newUser, designationId: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-                  >
-                    <option value="">Select Level</option>
-                    {designationsData?.data?.map((d) => (
-                      <option key={d.designationId} value={d.designationId}>
-                        Level {d.levelRank} — {d.title}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            {newUser.role === 'FACULTY' && (
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Reports To (Higher Level Faculty / HOD)</label>
-                <select
-                  value={newUser.reportsToId}
-                  onChange={(e) => setNewUser({ ...newUser, reportsToId: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-                >
-                  <option value="">Default (Directly to HOD / Top Level)</option>
-                  {facultyUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.fullName} ({u.designation || 'Faculty'} · Level {u.designationLevel || 1})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Initial Login Password</label>
-              <input
-                type="password"
-                value={newUser.password}
-                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                placeholder={newUser.role === 'FACULTY' ? 'Default: faculty123' : 'Default: staff123'}
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
-              />
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                Leave blank to assign default password (<code className="text-slate-600">{newUser.role === 'FACULTY' ? 'faculty123' : 'staff123'}</code>)
+            {/* Header Description & Badge */}
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <p className="text-xs text-slate-500">
+                Create institutional credentials and assign hierarchy lines before first login.
+              </p>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-50 text-brand-700 border border-brand-200">
+                <ShieldCheck className="w-3 h-3 mr-1 text-brand-600" /> Authorized Admin Action
               </span>
             </div>
 
-            <div className="flex justify-end space-x-2 pt-2">
+            {/* 1. Role Selection Cards */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                1. Institutional Role *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  {
+                    role: 'FACULTY',
+                    title: 'Faculty Reviewer',
+                    desc: 'Review lost reports, match items, verify claims',
+                    icon: Award,
+                    color: 'purple'
+                  },
+                  {
+                    role: 'STAFF',
+                    title: 'Desk Staff',
+                    desc: 'Log found items, shelf tagging, search visits',
+                    icon: Briefcase,
+                    color: 'blue'
+                  },
+                  {
+                    role: 'ADMIN',
+                    title: 'Administrator',
+                    desc: 'System governance, hierarchy, audit logs',
+                    icon: ShieldCheck,
+                    color: 'emerald'
+                  }
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isSelected = newUser.role === item.role;
+                  return (
+                    <button
+                      key={item.role}
+                      type="button"
+                      onClick={() => setNewUser({ ...newUser, role: item.role })}
+                      className={`text-left p-3.5 rounded-2xl border-2 transition-all select-none flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-brand-600 bg-brand-50/50 shadow-sm ring-2 ring-brand-500/20'
+                          : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                          isSelected ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        {isSelected && (
+                          <CheckCircle2 className="w-4 h-4 text-brand-600" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">
+                          {item.title}
+                        </span>
+                        <span className="text-[10px] text-slate-500 leading-tight block mt-0.5">
+                          {item.desc}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Identity Information */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                2. User Identity
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Full Name *
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      required
+                      value={newUser.fullName}
+                      onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                      placeholder="Dr. S. Ramaswamy"
+                      className="w-full h-11 pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Institutional Email *
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      required
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      placeholder="ramaswamy@vit.ac.in"
+                      className="w-full h-11 pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Must use verified domain: <span className="font-semibold text-slate-600">@vit.ac.in</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Hierarchy Section (When Role is FACULTY) */}
+            {newUser.role === 'FACULTY' && (
+              <div className="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3">
+                <div className="flex items-center space-x-1.5 text-slate-700">
+                  <Network className="w-4 h-4 text-brand-600" />
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    3. Faculty Rank & Escalation Structure
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      Faculty Level / Rank (3 Levels)
+                    </label>
+                    <select
+                      value={newUser.designationId}
+                      onChange={(e) => setNewUser({ ...newUser, designationId: e.target.value })}
+                      className="w-full h-11 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                    >
+                      <option value="">Default (Level 1 — Faculty)</option>
+                      {designationsData?.data?.map((d) => (
+                        <option key={d.designationId} value={d.designationId}>
+                          Level {d.levelRank} — {d.title}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Determines queue eligibility and hierarchy rank
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      Reports To (Escalation Superior)
+                    </label>
+                    <select
+                      value={newUser.reportsToId}
+                      onChange={(e) => setNewUser({ ...newUser, reportsToId: e.target.value })}
+                      className="w-full h-11 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                    >
+                      <option value="">Directly to HOD / Top Level</option>
+                      {facultyUsers.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {u.fullName} ({u.designation || 'Faculty'} · Level {u.designationLevel || 1})
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Target officer if case review SLA lapses
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Staff Duties Banner (When Role is STAFF) */}
+            {newUser.role === 'STAFF' && (
+              <div className="p-4 bg-blue-50/70 border border-blue-200 rounded-2xl flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-blue-900 leading-relaxed">
+                  <span className="font-bold block text-blue-950 mb-0.5">SJT G03 Desk Clearance:</span>
+                  This staff member will have operational privileges to log incoming found items handed in by security or housekeeping, print shelf code stickers, and record in-person student search visits.
+                </div>
+              </div>
+            )}
+
+            {/* 4. Credentials & Access */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  {newUser.role === 'FACULTY' ? '4.' : '3.'} Initial Login Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setNewUser({
+                    ...newUser,
+                    password: newUser.role === 'FACULTY' ? 'faculty123' : 'staff123'
+                  })}
+                  className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                >
+                  Use Default ({newUser.role === 'FACULTY' ? 'faculty123' : 'staff123'})
+                </button>
+              </div>
+
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  placeholder={newUser.role === 'FACULTY' ? 'Default: faculty123' : 'Default: staff123'}
+                  className="w-full h-11 pl-10 pr-10 py-2 text-xs font-mono rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Leave blank to automatically assign the default password (<code className="font-mono bg-slate-100 text-slate-700 px-1 py-0.5 rounded">{newUser.role === 'FACULTY' ? 'faculty123' : 'staff123'}</code>). User can update their credentials after initial login.
+              </p>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setIsAddOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                className="px-5 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="px-4 py-2 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl shadow-sm transition"
+                className="inline-flex items-center px-6 py-2.5 text-xs font-bold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 rounded-xl shadow-md transition"
               >
-                {createMutation.isPending ? 'Provisioning...' : 'Save & Provision'}
+                {createMutation.isPending ? 'Provisioning...' : 'Save & Provision Account'}
               </button>
             </div>
           </form>

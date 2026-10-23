@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getMeta, createReport } from '../../api/client';
+import { ImageUploader } from '../../components/ImageUploader';
 import { FilePlus, ShieldAlert, Clock, Tag, Palette, ArrowLeft, Info, MapPin, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -102,6 +103,7 @@ export function NewReport() {
   const [submitting, setSubmitting] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationQuery, setLocationQuery] = useState('');
+  const [images, setImages] = useState([]);
 
   const { data: metaData } = useQuery({ queryKey: ['meta'], queryFn: getMeta });
 
@@ -139,7 +141,20 @@ export function NewReport() {
       const { lostDate, startTime, endTime, ...otherValues } = values;
       const lostFrom = new Date(`${lostDate}T${startTime}`).toISOString();
       const lostTo   = new Date(`${lostDate}T${endTime}`).toISOString();
-      const res = await createReport({ ...otherValues, lostFrom, lostTo });
+
+      const formData = new FormData();
+      formData.append('lostFrom', lostFrom);
+      formData.append('lostTo', lostTo);
+      Object.entries(otherValues).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          formData.append(key, val);
+        }
+      });
+      images.forEach((file) => {
+        formData.append('images', file);
+      });
+
+      const res = await createReport(formData);
       toast.success('Lost report submitted! Our review team has been notified.');
       navigate(`/student/reports/${res.report.reportId}`);
     } catch (e) {
@@ -332,6 +347,13 @@ export function NewReport() {
             </Field>
           </div>
         </Section>
+        {/* Photo Upload */}
+        <div className="mt-4">
+          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+            Photos (optional)
+          </label>
+          <ImageUploader images={images} onChange={setImages} maxFiles={3} />
+        </div>
 
         {/* ── Section 4: Confidential Proof ── */}
         <div className="bg-amber-50 rounded-2xl border border-amber-200 overflow-hidden">

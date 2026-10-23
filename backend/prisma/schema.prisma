@@ -87,7 +87,9 @@ model Location {
 model FoundItem {
   foundId            Int          @id @default(autoincrement()) @map("found_id")
   categoryId         Int          @map("category_id")
-  locationId         Int          @map("location_id")
+  locationId         Int?         @map("location_id")
+  locationText       String?      @map("location_text") @db.VarChar(200)
+  categoryCustom     String?      @map("category_custom") @db.VarChar(80)
   loggedBy           Int          @map("logged_by")
   description        String       @db.VarChar(200)
   color              String?      @db.VarChar(30)
@@ -101,7 +103,7 @@ model FoundItem {
   disposalReason     String?      @map("disposal_reason")
 
   category           Category     @relation(fields: [categoryId], references: [categoryId])
-  location           Location     @relation(fields: [locationId], references: [locationId])
+  location           Location?    @relation(fields: [locationId], references: [locationId])
   logger             User         @relation("LoggedItems", fields: [loggedBy], references: [userId])
   images             ItemImage[]
   matches            Match[]
@@ -144,6 +146,7 @@ model LostReport {
   student          User         @relation("StudentReports", fields: [studentId], references: [userId])
   category         Category     @relation(fields: [categoryId], references: [categoryId])
   location         Location?    @relation(fields: [locationId], references: [locationId])
+  images           ReportImage[]
   matches          Match[]
   assignments      Assignment[]
   roomVisits       RoomVisit[]
@@ -151,6 +154,17 @@ model LostReport {
   @@index([studentId, status], map: "idx_reports_student")
   @@index([status, notFoundAt], map: "idx_reports_status_nf")
   @@map("lost_reports")
+}
+
+model ReportImage {
+  imageId     Int        @id @default(autoincrement()) @map("image_id")
+  reportId    Int        @map("report_id")
+  storagePath String     @map("storage_path")
+  uploadedAt  DateTime   @default(now()) @map("uploaded_at") @db.Timestamptz()
+
+  report      LostReport @relation(fields: [reportId], references: [reportId], onDelete: Cascade)
+
+  @@map("report_images")
 }
 
 model Match {

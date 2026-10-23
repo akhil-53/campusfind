@@ -74,7 +74,8 @@ export const reportForStudentSelect = {
   },
   location: {
     select: { locationId: true, roomName: true, block: true }
-  }
+  },
+  images: true
 };
 
 export const reportForStaffSelect = {
@@ -116,6 +117,7 @@ export const reportForFacultySelect = {
   closedReason: true,
   createdAt: true,
   updatedAt: true,
+  images: true,
   category: {
     select: { categoryId: true, categoryName: true }
   },

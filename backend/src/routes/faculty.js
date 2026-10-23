@@ -200,8 +200,15 @@ router.get(
         })
       );
 
+      const signedReportImages = await Promise.all(
+        (report?.images || []).map(async (img) => ({
+          ...img,
+          url: await getSignedImageUrl(img.storagePath, 3600)
+        }))
+      );
+
       return res.json({
-        report,
+        report: report ? { ...report, images: signedReportImages } : null,
         matches: enrichedMatches,
         verifications,
         escalationHistory: escalations.map(e => ({

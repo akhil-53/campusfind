@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { body, param, query } from 'express-validator';
 import prisma from '../config/prisma.js';
 import { auth } from '../middleware/auth.js';
@@ -7,17 +8,34 @@ import { requireProfile } from '../middleware/requireProfile.js';
 import { validate } from '../middleware/validate.js';
 import { asUser } from '../services/dbActor.js';
 import { assertOwnReport, assertFacultyOnCase, reportForStudentSelect, reportForFacultySelect } from '../services/access.js';
+import { uploadItemImage, getSignedImageUrl } from '../services/storage.js';
 import { getPaginationParams, formatPaginatedResponse } from '../utils/pagination.js';
 import { HttpError } from '../utils/httpError.js';
 
 const router = Router();
 
-// POST /api/reports (Student file lost report)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 3 * 1024 * 1024 // 3 MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'image/pjpeg'];
+    if (allowed.includes(file.mimetype.toLowerCase()) || /\.(jpe?g|png|webp)$/i.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new HttpError(400, 'Only JPEG, PNG and WebP images are allowed.', 'INVALID_FILE_TYPE'));
+    }
+  }
+});
+
+// POST /api/reports (Student file lost report with optional reference photos)
 router.post(
   '/',
   auth,
   authorize('STUDENT'),
   requireProfile,
+  upload.array('images', 3),
   validate([
     body('categoryId').isInt({ min: 1 }).withMessage('Valid category ID required'),
     body('categoryCustom').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
@@ -75,7 +93,35 @@ router.post(
         });
       });
 
-      return res.status(201).json({ report });
+      // Handle reference photos if any uploaded
+      const files = req.files || [];
+      if (files.length > 0) {
+        try {
+          const imageRecords = [];
+          for (const file of files) {
+            const storagePath = await uploadItemImage(report.reportId, file);
+            imageRecords.push({
+              reportId: report.reportId,
+              storagePath
+            });
+          }
+
+          if (imageRecords.length > 0) {
+            await prisma.reportImage.createMany({
+              data: imageRecords
+            });
+          }
+        } catch (uploadErr) {
+          console.error('[Reports] Image upload failed:', uploadErr);
+        }
+      }
+
+      const completeReport = await prisma.lostReport.findUnique({
+        where: { reportId: report.reportId },
+        select: reportForStudentSelect
+      });
+
+      return res.status(201).json({ report: completeReport || report });
     } catch (err) {
       next(err);
     }
@@ -201,8 +247,15 @@ router.get(
         logId: String(row.logId)
       }));
 
+      const signedImages = await Promise.all(
+        (report.images || []).map(async (img) => ({
+          ...img,
+          url: await getSignedImageUrl(img.storagePath, 3600)
+        }))
+      );
+
       return res.json({
-        report,
+        report: { ...report, images: signedImages },
         upcomingVerification,
         handoverLetter: handover,
         timeline

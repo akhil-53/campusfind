@@ -18,7 +18,8 @@ const upload = multer({
     fileSize: 3 * 1024 * 1024 // 3 MB
   },
   fileFilter: (req, file, cb) => {
-    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'image/pjpeg'];
+    if (allowed.includes(file.mimetype.toLowerCase()) || /\.(jpe?g|png|webp)$/i.test(file.originalname)) {
       cb(null, true);
     } else {
       cb(new HttpError(400, 'Only JPEG, PNG and WebP images are allowed.', 'INVALID_FILE_TYPE'));
@@ -34,7 +35,9 @@ router.post(
   upload.array('images', 3),
   validate([
     body('categoryId').isInt({ min: 1 }).withMessage('Valid category ID is required'),
-    body('locationId').isInt({ min: 1 }).withMessage('Valid location ID is required'),
+    body('categoryCustom').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
+    body('locationId').optional({ nullable: true }),
+    body('locationText').optional({ nullable: true }).isString().trim().isLength({ min: 2, max: 200 }),
     body('description').isString().trim().isLength({ min: 3, max: 200 }).withMessage('Description must be 3-200 characters'),
     body('color').optional({ nullable: true }).isString().trim().isLength({ max: 30 }),
     body('brand').optional({ nullable: true }).isString().trim().isLength({ max: 40 }),
@@ -44,12 +47,19 @@ router.post(
   async (req, res, next) => {
     let createdItemId = null;
     try {
-      const { categoryId, locationId, description, color, brand, shelfCode, foundAt } = req.body;
+      const { categoryId, categoryCustom, locationId, locationText, description, color, brand, shelfCode, foundAt } = req.body;
       const foundDate = new Date(foundAt);
       const now = new Date();
 
       if (foundDate > new Date(now.getTime() + 5 * 60 * 1000)) {
         throw new HttpError(422, 'Found time cannot be in the future', 'FUTURE_DATE_NOT_ALLOWED');
+      }
+
+      const parsedLocationId = locationId && parseInt(locationId, 10) > 0 ? parseInt(locationId, 10) : null;
+      const cleanLocationText = locationText && locationText.trim() ? locationText.trim() : null;
+
+      if (!parsedLocationId && !cleanLocationText) {
+        throw new HttpError(400, 'Please enter a room number or location', 'LOCATION_REQUIRED');
       }
 
       // Check shelf code uniqueness
@@ -62,7 +72,9 @@ router.post(
         return tx.foundItem.create({
           data: {
             categoryId: parseInt(categoryId, 10),
-            locationId: parseInt(locationId, 10),
+            categoryCustom: categoryCustom && categoryCustom.trim() ? categoryCustom.trim() : null,
+            locationId: parsedLocationId,
+            locationText: cleanLocationText,
             loggedBy: req.user.id,
             description,
             color: color || null,
@@ -155,7 +167,9 @@ router.get(
         where.OR = [
           { description: { contains: queryTerm, mode: 'insensitive' } },
           { brand: { contains: queryTerm, mode: 'insensitive' } },
-          { shelfCode: { contains: queryTerm, mode: 'insensitive' } }
+          { shelfCode: { contains: queryTerm, mode: 'insensitive' } },
+          { locationText: { contains: queryTerm, mode: 'insensitive' } },
+          { categoryCustom: { contains: queryTerm, mode: 'insensitive' } }
         ];
       }
 

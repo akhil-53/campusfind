@@ -52,6 +52,7 @@ export function Sidebar({ isOpen, onClose }) {
           { to: '/admin/users', label: 'Faculty & Staff', icon: Users },
           { to: '/admin/hierarchy', label: 'Hierarchy Tree', icon: Network },
           { to: '/admin/reports', label: 'All Reports', icon: Files },
+          { to: '/admin/items', label: 'Found Inventory', icon: Boxes },
           { to: '/admin/overdue', label: 'Overdue Cases', icon: ClockAlert },
           { to: '/admin/settings', label: 'Settings & Master', icon: SlidersHorizontal },
           { to: '/admin/audit', label: 'Audit Logs', icon: ScrollText }
