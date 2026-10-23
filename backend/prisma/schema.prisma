@@ -126,7 +126,9 @@ model LostReport {
   reportId         Int          @id @default(autoincrement()) @map("report_id")
   studentId        Int          @map("student_id")
   categoryId       Int          @map("category_id")
-  locationId       Int          @map("location_id")
+  locationId       Int?         @map("location_id")
+  locationText     String?      @map("location_text") @db.VarChar(200)
+  categoryCustom   String?      @map("category_custom") @db.VarChar(80)
   description      String       @db.VarChar(300)
   color            String?      @db.VarChar(30)
   brand            String?      @db.VarChar(40)
@@ -141,7 +143,7 @@ model LostReport {
 
   student          User         @relation("StudentReports", fields: [studentId], references: [userId])
   category         Category     @relation(fields: [categoryId], references: [categoryId])
-  location         Location     @relation(fields: [locationId], references: [locationId])
+  location         Location?    @relation(fields: [locationId], references: [locationId])
   matches          Match[]
   assignments      Assignment[]
   roomVisits       RoomVisit[]

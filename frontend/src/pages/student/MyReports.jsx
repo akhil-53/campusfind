@@ -28,7 +28,10 @@ export function MyReports() {
       accessor: 'categoryName',
       render: (r) => (
         <div>
-          <span className="font-bold text-slate-800 block text-xs">{r.category?.categoryName}</span>
+          <span className="font-bold text-slate-800 block text-xs">
+            {r.category?.categoryName}
+            {r.categoryCustom ? ` (${r.categoryCustom})` : ''}
+          </span>
           <span className="text-xs text-slate-500 line-clamp-1">{r.description}</span>
         </div>
       )
@@ -38,7 +41,7 @@ export function MyReports() {
       accessor: 'roomName',
       render: (r) => (
         <span className="text-xs text-slate-600 font-medium">
-          {r.location?.block} - {r.location?.roomName}
+          {r.location ? `${r.location.block} - ${r.location.roomName}` : (r.locationText || 'Not specified')}
         </span>
       )
     },

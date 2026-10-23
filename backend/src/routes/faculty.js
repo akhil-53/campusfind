@@ -56,6 +56,8 @@ router.get(
                 lostFrom: true,
                 lostTo: true,
                 identifyingMarks: true,
+                locationText: true,
+                categoryCustom: true,
                 category: { select: { categoryName: true } },
                 location: { select: { roomName: true, block: true } },
                 student: { select: { fullName: true, regNo: true } },
@@ -86,10 +88,14 @@ router.get(
         color: a.report.color,
         brand: a.report.brand,
         identifyingMarks: a.report.identifyingMarks,
+        locationText: a.report.locationText || null,
+        categoryCustom: a.report.categoryCustom || null,
         lostFrom: a.report.lostFrom,
         lostTo: a.report.lostTo,
         categoryName: a.report.category.categoryName,
-        roomName: `${a.report.location.block} - ${a.report.location.roomName}`,
+        roomName: a.report.location
+          ? `${a.report.location.block} - ${a.report.location.roomName}`
+          : (a.report.locationText || 'Not specified'),
         studentName: a.report.student.fullName,
         regNo: a.report.student.regNo,
         openMatches: a.report._count.matches
@@ -274,7 +280,9 @@ router.get('/theft-cases', auth, authorize('FACULTY', 'ADMIN'), async (req, res,
       studentName: c.report.student.fullName,
       regNo: c.report.student.regNo,
       description: c.report.description,
-      roomName: c.report.location.roomName,
+      roomName: c.report.location
+        ? c.report.location.roomName
+        : (c.report.locationText || 'Not specified'),
       lostFrom: c.report.lostFrom,
       lostTo: c.report.lostTo,
       cctvNotes: c.report.roomVisits[0]?.notes || 'Theft suspected on room visit',

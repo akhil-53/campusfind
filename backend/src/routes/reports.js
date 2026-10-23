@@ -20,7 +20,9 @@ router.post(
   requireProfile,
   validate([
     body('categoryId').isInt({ min: 1 }).withMessage('Valid category ID required'),
-    body('locationId').isInt({ min: 1 }).withMessage('Valid location ID required'),
+    body('categoryCustom').optional({ nullable: true }).isString().trim().isLength({ max: 80 }),
+    body('locationId').optional({ nullable: true }).isInt({ min: 1 }),
+    body('locationText').optional({ nullable: true }).isString().trim().isLength({ max: 200 }),
     body('description').isString().trim().isLength({ min: 10, max: 300 }).withMessage('Description must be 10-300 characters'),
     body('color').optional({ nullable: true }).isString().trim().isLength({ max: 30 }),
     body('brand').optional({ nullable: true }).isString().trim().isLength({ max: 40 }),
@@ -30,10 +32,15 @@ router.post(
   ]),
   async (req, res, next) => {
     try {
-      const { categoryId, locationId, description, color, brand, identifyingMarks, lostFrom, lostTo } = req.body;
+      const { categoryId, categoryCustom, locationId, locationText, description, color, brand, identifyingMarks, lostFrom, lostTo } = req.body;
       const fromDate = new Date(lostFrom);
       const toDate = new Date(lostTo);
       const now = new Date();
+
+      // Must provide at least one location indicator
+      if (!locationId && !locationText?.trim()) {
+        throw new HttpError(422, 'Please provide a room number / location description', 'LOCATION_REQUIRED');
+      }
 
       if (toDate < fromDate) {
         throw new HttpError(422, 'Lost To date cannot be earlier than Lost From date', 'INVALID_TIME_WINDOW');
@@ -53,7 +60,9 @@ router.post(
           data: {
             studentId: req.user.id,
             categoryId: parseInt(categoryId, 10),
-            locationId: parseInt(locationId, 10),
+            categoryCustom: categoryCustom?.trim() || null,
+            locationId: locationId ? parseInt(locationId, 10) : null,
+            locationText: locationText?.trim() || null,
             description,
             color: color || null,
             brand: brand || null,

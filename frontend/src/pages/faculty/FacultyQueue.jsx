@@ -37,7 +37,10 @@ export function FacultyQueue() {
       accessor: 'description',
       render: (a) => (
         <div>
-          <span className="font-bold text-slate-800 text-xs block">{a.categoryName}</span>
+          <span className="font-bold text-slate-800 text-xs block">
+            {a.categoryName}
+            {a.categoryCustom ? ` (${a.categoryCustom})` : ''}
+          </span>
           <p className="text-xs text-slate-500 line-clamp-1 max-w-xs">{a.description}</p>
         </div>
       )

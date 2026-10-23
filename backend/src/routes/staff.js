@@ -65,7 +65,9 @@ router.get(
           notFoundAt: r.notFoundAt,
           visitDeadline: deadline,
           categoryName: r.category.categoryName,
-          roomName: r.location.roomName,
+          categoryCustom: r.categoryCustom || null,
+          locationText: r.locationText || null,
+          roomName: r.location ? `${r.location.block} - ${r.location.roomName}` : (r.locationText || 'Not specified'),
           studentName: r.student.fullName,
           regNo: r.student.regNo
         };

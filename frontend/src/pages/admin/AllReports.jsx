@@ -75,7 +75,12 @@ export function AllReports() {
       accessor: 'description',
       render: (r) => (
         <div>
-          <span className="font-bold text-slate-800 text-xs block">{r.categoryName}</span>
+          <span className="font-bold text-slate-800 text-xs block">
+            {r.categoryName}
+            {r.categoryCustom && (
+              <span className="text-brand-600 font-semibold ml-1">({r.categoryCustom})</span>
+            )}
+          </span>
           <p className="text-xs text-slate-600 line-clamp-1 max-w-xs">{r.description}</p>
           <span className="text-[10px] text-amber-700 italic block mt-0.5">
             Marks: {r.identifyingMarks}

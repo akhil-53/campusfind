@@ -113,10 +113,13 @@ export function StudentDashboard() {
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <span className="text-xs font-bold text-slate-800 group-hover:text-brand-600 transition">
-                        {r.category.categoryName}
+                        {r.category?.categoryName}
+                        {r.categoryCustom ? ` (${r.categoryCustom})` : ''}
                       </span>
                       <span className="text-xs text-slate-400">·</span>
-                      <span className="text-xs text-slate-500">{r.location.roomName}</span>
+                      <span className="text-xs text-slate-500">
+                        {r.location ? `${r.location.block} - ${r.location.roomName}` : (r.locationText || 'Not specified')}
+                      </span>
                     </div>
                     <p className="text-xs text-slate-600 line-clamp-1 max-w-md">
                       {r.description}

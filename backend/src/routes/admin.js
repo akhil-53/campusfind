@@ -439,7 +439,9 @@ router.get('/overdue', async (req, res, next) => {
       designation: a.assignee.designation?.title || 'Faculty',
       atTop: !a.assignee.reportsToId,
       categoryName: a.report.category.categoryName,
-      roomName: a.report.location.roomName,
+      roomName: a.report.location
+        ? a.report.location.roomName
+        : (a.report.locationText || 'Not specified'),
       studentName: a.report.student.fullName,
       description: a.report.description
     }));
@@ -506,7 +508,10 @@ router.get(
         lostTo: r.lostTo,
         createdAt: r.createdAt,
         categoryName: r.category.categoryName,
-        roomName: `${r.location.block} - ${r.location.roomName}`,
+        categoryCustom: r.categoryCustom || null,
+        roomName: r.location
+          ? `${r.location.block} - ${r.location.roomName}`
+          : (r.locationText || 'Not specified'),
         studentName: r.student.fullName,
         regNo: r.student.regNo,
         currentAssignee: r.assignments[0]?.assignee?.fullName || 'None'

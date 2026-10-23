@@ -5,37 +5,53 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { getMeta, createReport } from '../../api/client';
-import { FilePlus, ShieldAlert, Clock, Tag, Palette, ArrowLeft, Info } from 'lucide-react';
+import { FilePlus, ShieldAlert, Clock, Tag, Palette, ArrowLeft, Info, MapPin, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+// ── Schema: date + start time + end time (on the same day; max 24h gap) ──
 const reportSchema = z.object({
   categoryId: z.coerce.number().min(1, 'Category is required'),
-  locationId: z.coerce.number().min(1, 'Location room is required'),
+  categoryCustom: z.string().max(80).optional().or(z.literal('')),
+  locationText: z.string().min(2, 'Please enter a room number or location').max(200, 'Max 200 characters'),
   description: z.string().min(10, 'Minimum 10 characters').max(300, 'Max 300 characters'),
   color: z.string().max(30).optional().or(z.literal('')),
   brand: z.string().max(40).optional().or(z.literal('')),
   identifyingMarks: z.string().min(5, 'Minimum 5 characters').max(1000, 'Max 1000 characters'),
-  lostFromDate: z.string().min(1, 'Lost from date is required'),
-  lostFromTime: z.string().min(1, 'Lost from time is required'),
-  lostToDate: z.string().min(1, 'Lost to date is required'),
-  lostToTime: z.string().min(1, 'Lost to time is required')
+  lostDate: z.string().min(1, 'Date is required'),
+  startTime: z.string().min(1, 'Start time is required'),
+  endTime: z.string().min(1, 'End time is required'),
 }).superRefine((data, ctx) => {
-  const from = new Date(`${data.lostFromDate}T${data.lostFromTime}`);
-  const to = new Date(`${data.lostToDate}T${data.lostToTime}`);
+  if (!data.lostDate || !data.startTime || !data.endTime) return;
 
-  if (
-    !data.lostFromDate || !data.lostFromTime ||
-    !data.lostToDate || !data.lostToTime ||
-    Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())
-  ) return;
+  const from = new Date(`${data.lostDate}T${data.startTime}`);
+  const to = new Date(`${data.lostDate}T${data.endTime}`);
 
-  if (to < from) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Lost To cannot be earlier than Lost From', path: ['lostToTime'] });
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return;
+
+  if (to <= from) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End time must be after start time',
+      path: ['endTime'],
+    });
     return;
   }
+
   const diffHours = (to.getTime() - from.getTime()) / (1000 * 60 * 60);
   if (diffHours > 24) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Lost time range cannot exceed 24 hours', path: ['lostToTime'] });
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Interval cannot exceed 24 hours',
+      path: ['endTime'],
+    });
+  }
+
+  if (to > new Date(Date.now() + 5 * 60 * 1000)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'End time cannot be in the future',
+      path: ['endTime'],
+    });
   }
 });
 
@@ -84,18 +100,46 @@ function Section({ icon: Icon, title, subtitle, accent = 'brand', children }) {
 export function NewReport() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [locationQuery, setLocationQuery] = useState('');
 
   const { data: metaData } = useQuery({ queryKey: ['meta'], queryFn: getMeta });
 
-  const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(reportSchema) });
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+    resolver: zodResolver(reportSchema),
+    defaultValues: { lostDate: new Date().toISOString().slice(0, 10) }
+  });
+
+  const selectedCategoryId = watch('categoryId');
+  const selectedCategory = metaData?.categories?.find(
+    (c) => String(c.categoryId) === String(selectedCategoryId)
+  );
+  const isOtherCategory = selectedCategory?.categoryName?.toLowerCase() === 'other';
+
+  // Smart-suggest known rooms as user types
+  const filteredLocations = (metaData?.locations || []).filter((l) => {
+    const q = locationQuery.toLowerCase();
+    return (
+      l.roomName?.toLowerCase().includes(q) ||
+      l.block?.toLowerCase().includes(q) ||
+      l.locationType?.toLowerCase().includes(q)
+    );
+  }).slice(0, 6);
+
+  const handleLocationSelect = (loc) => {
+    const label = `${loc.block} — ${loc.roomName}`;
+    setValue('locationText', label, { shouldValidate: true });
+    setLocationQuery(label);
+    setShowLocationSuggestions(false);
+  };
 
   const onSubmit = async (values) => {
     setSubmitting(true);
     try {
-      const { lostFromDate, lostFromTime, lostToDate, lostToTime, ...otherValues } = values;
-      const lostFrom = new Date(`${lostFromDate}T${lostFromTime}`);
-      const lostTo = new Date(`${lostToDate}T${lostToTime}`);
-      const res = await createReport({ ...otherValues, lostFrom: lostFrom.toISOString(), lostTo: lostTo.toISOString() });
+      const { lostDate, startTime, endTime, ...otherValues } = values;
+      const lostFrom = new Date(`${lostDate}T${startTime}`).toISOString();
+      const lostTo   = new Date(`${lostDate}T${endTime}`).toISOString();
+      const res = await createReport({ ...otherValues, lostFrom, lostTo });
       toast.success('Lost report submitted! Our review team has been notified.');
       navigate(`/student/reports/${res.report.reportId}`);
     } catch (e) {
@@ -128,6 +172,8 @@ export function NewReport() {
 
         {/* ── Section 1: Item Details ── */}
         <Section icon={Tag} title="Item Details" subtitle="What did you lose and where?">
+
+          {/* Category selector */}
           <Field label="Item Category" required error={errors.categoryId?.message}>
             <select {...register('categoryId')} className={selectCls}>
               <option value="">Select a category...</option>
@@ -137,51 +183,127 @@ export function NewReport() {
             </select>
           </Field>
 
-          <Field label="Room / Location" required error={errors.locationId?.message}>
-            <select {...register('locationId')} className={selectCls}>
-              <option value="">Select the room where you lost it...</option>
-              {metaData?.locations?.map((l) => (
-                <option key={l.locationId} value={l.locationId}>
-                  {l.block} — {l.roomName} ({l.locationType})
-                </option>
-              ))}
-            </select>
+          {/* When "Other" is chosen, let student specify */}
+          {isOtherCategory && (
+            <Field
+              label="Specify Item Type"
+              required
+              hint="Describe the item type since it doesn't fit any listed category."
+              error={errors.categoryCustom?.message}
+            >
+              <input
+                type="text"
+                {...register('categoryCustom')}
+                placeholder="e.g. Umbrella, Spectacles, Charger..."
+                className={inputCls}
+                autoFocus
+              />
+            </Field>
+          )}
+
+          {/* Location — free-text with smart autocomplete */}
+          <Field
+            label="Room Number / Location"
+            required
+            hint="Type your room number, corridor or area (e.g. SJT 312, Near SJT 418, Ground floor lobby)."
+            error={errors.locationText?.message}
+          >
+            <div className="relative">
+              <div className="relative flex items-center">
+                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  {...register('locationText')}
+                  value={locationQuery}
+                  onChange={(e) => {
+                    setLocationQuery(e.target.value);
+                    setValue('locationText', e.target.value, { shouldValidate: true });
+                    setShowLocationSuggestions(e.target.value.length > 0);
+                  }}
+                  onFocus={() => setShowLocationSuggestions(locationQuery.length > 0)}
+                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
+                  placeholder="e.g. SJT 312, Near SJT 418, Ground Floor Lobby..."
+                  className={`${inputCls} pl-10 pr-10`}
+                  autoComplete="off"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLocationSuggestions((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
+                  tabIndex={-1}
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Suggestions dropdown */}
+              {showLocationSuggestions && filteredLocations.length > 0 && (
+                <div className="absolute z-20 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                  <p className="text-xs text-slate-400 font-medium px-3 py-2 border-b border-slate-100 bg-slate-50">
+                    Known rooms — click to fill, or just type your own
+                  </p>
+                  {filteredLocations.map((l) => (
+                    <button
+                      key={l.locationId}
+                      type="button"
+                      onMouseDown={() => handleLocationSelect(l)}
+                      className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 transition flex items-center gap-2"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                      <span>
+                        <span className="font-semibold">{l.block} — {l.roomName}</span>
+                        <span className="text-slate-400 text-xs ml-1.5">({l.locationType})</span>
+                      </span>
+                    </button>
+                  ))}
+                  <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100">
+                    <p className="text-xs text-slate-500">
+                      💡 You can type any custom location — no need to pick from the list.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </Field>
         </Section>
 
-        {/* ── Section 2: Time Window ── */}
-        <Section icon={Clock} title="When Did You Lose It?" subtitle="Narrow the window as much as possible — maximum 24 hours." accent="slate">
-          <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-              Lost from <span className="text-rose-500">*</span>
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Date" error={errors.lostFromDate?.message}>
-                <input type="date" {...register('lostFromDate')} className={inputCls} />
-              </Field>
-              <Field label="Time" error={errors.lostFromTime?.message}>
-                <input type="time" {...register('lostFromTime')} className={inputCls} />
-              </Field>
-            </div>
-          </div>
+        {/* ── Section 2: When Did You Lose It? ── */}
+        <Section
+          icon={Clock}
+          title="When Did You Lose It?"
+          subtitle="Pick the date and the time interval — maximum 24 hours."
+          accent="slate"
+        >
+          {/* Single date row */}
+          <Field label="Date" required error={errors.lostDate?.message}>
+            <input
+              type="date"
+              {...register('lostDate')}
+              max={new Date().toISOString().slice(0, 10)}
+              className={inputCls}
+            />
+          </Field>
 
+          {/* Time interval: start → end on same date */}
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
-              Lost to <span className="text-rose-500">*</span>
+              Time Interval <span className="text-rose-500">*</span>
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Date" error={errors.lostToDate?.message}>
-                <input type="date" {...register('lostToDate')} className={inputCls} />
+              <Field label="From (start time)" error={errors.startTime?.message}>
+                <input type="time" {...register('startTime')} className={inputCls} />
               </Field>
-              <Field label="Time" error={errors.lostToTime?.message}>
-                <input type="time" {...register('lostToTime')} className={inputCls} />
+              <Field label="To (end time)" error={errors.endTime?.message}>
+                <input type="time" {...register('endTime')} className={inputCls} />
               </Field>
             </div>
           </div>
 
           <div className="flex items-start gap-2 bg-slate-50 rounded-xl px-4 py-3 border border-slate-200">
             <Info className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-slate-500">The range must not exceed 24 hours and cannot end in the future.</p>
+            <p className="text-xs text-slate-500">
+              Both times must fall on the selected date. The interval cannot exceed 24 hours or end in the future.
+            </p>
           </div>
         </Section>
 

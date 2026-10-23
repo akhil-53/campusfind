@@ -66,7 +66,10 @@ export function ReportDetail() {
               <span className="text-xs font-mono font-bold text-slate-400">REPORT #{report.reportId}</span>
               <StatusBadge status={report.status} />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mt-1">{report.category?.categoryName}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mt-1">
+              {report.category?.categoryName}
+              {report.categoryCustom ? ` (${report.categoryCustom})` : ''}
+            </h1>
           </div>
         </div>
 
@@ -172,7 +175,7 @@ export function ReportDetail() {
               <div className="pt-2 border-t border-slate-100 text-xs space-y-2">
                 <div className="flex items-center text-slate-600">
                   <MapPin className="w-4 h-4 mr-2 text-slate-400" />
-                  <span>Room: <strong>{report.location?.block} - {report.location?.roomName}</strong></span>
+                  <span>Room: <strong>{report.location ? `${report.location.block} - ${report.location.roomName}` : (report.locationText || 'Not specified')}</strong></span>
                 </div>
                 <div className="flex items-center text-slate-600">
                   <Clock className="w-4 h-4 mr-2 text-slate-400" />

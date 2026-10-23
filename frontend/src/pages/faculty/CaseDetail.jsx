@@ -120,7 +120,10 @@ export function CaseDetail() {
               <span className="text-xs font-mono font-bold text-slate-400">CASE #{report.reportId}</span>
               <StatusBadge status={report.status} />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mt-1">{report.category?.categoryName}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 mt-1">
+              {report.category?.categoryName}
+              {report.categoryCustom ? ` (${report.categoryCustom})` : ''}
+            </h1>
           </div>
         </div>
 
@@ -174,7 +177,7 @@ export function CaseDetail() {
             <div className="text-xs space-y-2 pt-2 border-t border-slate-100 text-slate-600">
               <div className="flex items-center">
                 <MapPin className="w-4 h-4 mr-2 text-slate-400" />
-                <span>Reported Room: <strong>{report.location?.block} - {report.location?.roomName}</strong></span>
+                <span>Reported Room: <strong>{report.location ? `${report.location.block} - ${report.location.roomName}` : (report.locationText || 'Not specified')}</strong></span>
               </div>
               <div className="flex items-center">
                 <Clock className="w-4 h-4 mr-2 text-slate-400" />
